@@ -55,9 +55,20 @@ def fit_respiration(
     return model.fit(respiration.values, params, temperature=temperature.values)
 
 
-WINDOW_HALF_WIDTH_DAYS = 7
 MIN_DATA_LENGTH = 20
 MIN_TEMP_RANGE = 5  # K
+
+
+def get_window_data(
+    data: pd.DataFrame, date: datetime.date, window_half_width_days: int
+):
+    """Extract data for the given date and window width"""
+    # Precalculate dates of the index
+    dates = data.index.date  # type: ignore
+    return data.loc[
+        (dates >= date - datetime.timedelta(days=window_half_width_days))
+        & (dates <= date + datetime.timedelta(days=window_half_width_days))
+    ]
 
 
 def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
@@ -70,23 +81,17 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
         median, std
     """
 
-    dates = data.index.date  # type: ignore
-    model_dates = data.asfreq("D").index.date  # type: ignore
-
-    def fit_temperature_response_date(date: datetime.date) -> float:
-        df = data.loc[
-            (dates >= date - datetime.timedelta(days=WINDOW_HALF_WIDTH_DAYS))
-            & (dates <= date + datetime.timedelta(days=WINDOW_HALF_WIDTH_DAYS))
-        ]
+    def fit_temperature_response_date(date: datetime.date) -> tuple[float, float]:
+        df = get_window_data(data, date, 7)
         # Check that there is enough data with enough temp. variation
         if len(df) < MIN_DATA_LENGTH | (
             df["temperature"].max() - df["temperature"].min() < MIN_TEMP_RANGE
         ):
-            return np.nan
+            return np.nan, np.nan
         return fit_respiration(df["nee"], df["temperature"]).params["E"].value
 
     temp_response = pd.Series(
-        {d: fit_temperature_response_date(d) for d in model_dates}
+        {d: fit_temperature_response_date(d) for d in data.asfreq("D").index.date}  # type: ignore
     )
     return temp_response.median(), temp_response.std()
 
@@ -94,6 +99,6 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
 def main():
     """Partition NEE into GPP and TER"""
 
-    night_data = alldata.where(alldata["ppfd"] < 20)
+    night_data = alldata.where(alldata["ppfd"] < 20)[["temperature", "nee"]].dropna()
     temp_response, temp_response_err = find_temperature_response(night_data)
     return temp_response
