@@ -81,7 +81,7 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
 
     def fit_temperature_response_date(date: datetime.date) -> float:
         df = get_window_data(data, date, 7)
-        # Check that there is enough data with enough temp. variation
+        # Check that there is enough data and enough variation in temperatures
         if len(df) < MIN_DATA_LENGTH | (
             df["temperature"].max() - df["temperature"].min() < MIN_TEMP_RANGE
         ):
@@ -107,7 +107,7 @@ def create_models(
 
     def fit_date(date: datetime.date) -> lmfit.model.ModelResult | None:
         df = get_window_data(data, date, 2)
-        # Check that there is enough data with enough temp. variation
+        # Check that there is enough data
         if len(df) < MIN_DATA_LENGTH:
             return None
         return fit_respiration(df["nee"], df["temperature"], E=E)
