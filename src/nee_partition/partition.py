@@ -96,9 +96,32 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
     return temp_response.median(), temp_response.std()
 
 
+def create_respiration_models(
+    data: pd.DataFrame, E: float
+) -> dict[datetime.date, lmfit.model.ModelResult | None]:
+    """Fit models for total ecosystem response
+
+    Args:
+        data: Data frame with only night time values
+        E: Estimate for respiration temperature sensitivity
+    """
+
+    def fit_date(date: datetime.date) -> lmfit.model.ModelResult | None:
+        df = get_window_data(data, date, 2)
+        # Check that there is enough data with enough temp. variation
+        if len(df) < MIN_DATA_LENGTH:
+            return None
+        return fit_respiration(df["nee"], df["temperature"], E=E)
+
+    return {d: fit_date(d) for d in data.asfreq("D").index.date}
+
+
 def main():
     """Partition NEE into GPP and TER"""
 
     night_data = alldata.where(alldata["ppfd"] < 20)[["temperature", "nee"]].dropna()
     temp_response, temp_response_err = find_temperature_response(night_data)
-    return temp_response
+
+    resp_models = create_respiration_models(night_data, temp_response)
+
+    return resp_models
