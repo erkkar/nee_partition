@@ -1,0 +1,17 @@
+[project]
+name = "nee_partition"
+version = "0.1"
+authors = [
+    { name = "Henriikka Vekuri", email = "henriikka.vekuri@fmi.fi" },
+    { name = "Erkka Rinne", email = "erkka.rinne@fmi.fi" },
+]
+description = """Python module to partition Net Ecosystem Exchange (NEE) of CO₂ into Gross Primary Productivity (GPP) and Total Ecosystem Respiration (TER)"""
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+dependencies = ["numpy", "pandas", "lmfit"]
