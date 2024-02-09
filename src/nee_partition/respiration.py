@@ -1,30 +1,44 @@
-"""Module for partitioning NEE"""
+"""Module for ecosystem respiration modelling"""
 
 import datetime
 
 import lmfit
 import numpy as np
 import pandas as pd
-from pyprojroot import here
 
-from nee_partition.models import ecosystem_respiration
-
-VARIABLES = {"temperature": "TA", "ppfd": "PAR", "nee": "NEE"}
-
-alldata = pd.read_csv(
-    here() / "Kalevansuo.csv", index_col="TIMESTAMP_END", parse_dates=True
-).rename(columns={data_var: variable for variable, data_var in VARIABLES.items()})
+from nee_partition.timeseries import get_window_data
 
 # Bounds for parameters
 VARIABLE_BOUNDS = {
     "E": (50, 500),  # K-1
     "R0": (0.0000001, 1),  # mg CO2 m-2 s-1
-    "alpha": (-0.02, -0.0000001),  # µmol-1 m2 s1
-    "gp_max": (-5, -0.00000001),  # mg CO2 m-2 s-1
 }
 
-R0_GUESS = 0.2
+# Initial guesses for parameter values
+R0_GUESS = 0.2  # mg CO2 m-2 s-1
 E_GUESS = 300  # mg CO2 m-2 s-1 K-1
+
+# Other settings
+MIN_DATA_LENGTH = 20
+MIN_TEMP_RANGE = 5  # K
+
+
+def ecosystem_respiration(temperature: float, E: float, R0: float) -> float:
+    """Calculate soil respiration based on Lloyd & Taylor (1994)
+
+    Args:
+        temperature: Soil temperature (K)
+        E: Temperature sensitivity of respiration (K-1)
+        R0: Ecosystem respiration at 10°C (mg CO2 m-2 s-1)
+
+    References:
+        Lloyd, J., and J. A. Taylor. 1994. ‘On the Temperature Dependence of Soil
+        Respiration’. Functional Ecology 8 (3): 315–23.
+        https://doi.org/10.2307/2389824.
+    """
+    temp0 = 56.02  # K
+    temp1 = 227.13  # K
+    return R0 * np.exp(E * ((1 / temp0) - (1 / (temperature - temp1))))
 
 
 def fit_respiration(
@@ -55,22 +69,6 @@ def fit_respiration(
     return model.fit(respiration.values, params, temperature=temperature.values)
 
 
-MIN_DATA_LENGTH = 20
-MIN_TEMP_RANGE = 5  # K
-
-
-def get_window_data(
-    data: pd.DataFrame, date: datetime.date, window_half_width_days: int
-) -> pd.DataFrame:
-    """Extract data for the given date and window width"""
-    # Precalculate dates of the index
-    dates = data.index.date  # type: ignore
-    return data.loc[
-        (dates >= date - datetime.timedelta(days=window_half_width_days))
-        & (dates <= date + datetime.timedelta(days=window_half_width_days))
-    ]
-
-
 def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
     """Find estimate for respiration temperature response
 
@@ -97,7 +95,7 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
     return temp_response.median(), temp_response.std()
 
 
-def create_respiration_models(
+def create_models(
     data: pd.DataFrame, E: float
 ) -> dict[datetime.date, lmfit.model.ModelResult | None]:
     """Fit models for total ecosystem response
@@ -116,14 +114,3 @@ def create_respiration_models(
 
     model_dates = data.asfreq("D").index.date  # type: ignore
     return {d: fit_date(d) for d in model_dates}
-
-
-def main():
-    """Partition NEE into GPP and TER"""
-
-    night_data = alldata.where(alldata["ppfd"] < 20)[["temperature", "nee"]].dropna()
-    temp_response, temp_response_err = find_temperature_response(night_data)
-
-    resp_models = create_respiration_models(night_data, temp_response)
-
-    return resp_models
