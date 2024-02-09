@@ -61,7 +61,7 @@ MIN_TEMP_RANGE = 5  # K
 
 def get_window_data(
     data: pd.DataFrame, date: datetime.date, window_half_width_days: int
-):
+) -> pd.DataFrame:
     """Extract data for the given date and window width"""
     # Precalculate dates of the index
     dates = data.index.date  # type: ignore
@@ -81,17 +81,18 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
         median, std
     """
 
-    def fit_temperature_response_date(date: datetime.date) -> tuple[float, float]:
+    def fit_temperature_response_date(date: datetime.date) -> float:
         df = get_window_data(data, date, 7)
         # Check that there is enough data with enough temp. variation
         if len(df) < MIN_DATA_LENGTH | (
             df["temperature"].max() - df["temperature"].min() < MIN_TEMP_RANGE
         ):
-            return np.nan, np.nan
+            return np.nan
         return fit_respiration(df["nee"], df["temperature"]).params["E"].value
 
+    model_dates = data.asfreq("D").index.date  # type: ignore
     temp_response = pd.Series(
-        {d: fit_temperature_response_date(d) for d in data.asfreq("D").index.date}  # type: ignore
+        {d: fit_temperature_response_date(d) for d in model_dates}
     )
     return temp_response.median(), temp_response.std()
 
@@ -102,7 +103,7 @@ def create_respiration_models(
     """Fit models for total ecosystem response
 
     Args:
-        data: Data frame with only night time values
+        data: Data frame with only night time values of NEE and temperature
         E: Estimate for respiration temperature sensitivity
     """
 
@@ -113,7 +114,8 @@ def create_respiration_models(
             return None
         return fit_respiration(df["nee"], df["temperature"], E=E)
 
-    return {d: fit_date(d) for d in data.asfreq("D").index.date}
+    model_dates = data.asfreq("D").index.date  # type: ignore
+    return {d: fit_date(d) for d in model_dates}
 
 
 def main():
