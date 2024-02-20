@@ -6,6 +6,7 @@ from pyprojroot import here
 from nee_partition import respiration
 
 VARIABLES = {"temperature": "TA", "ppfd": "PAR", "nee": "NEE"}
+PPFD_THRESHOLD = 20  # µmol m-2 s-1
 
 alldata = pd.read_csv(
     here() / "Kalevansuo.csv", index_col="TIMESTAMP_END", parse_dates=True
@@ -15,7 +16,9 @@ alldata = pd.read_csv(
 def main():
     """Partition NEE into GPP and TER"""
 
-    night_data = alldata.where(alldata["ppfd"] < 20)[["temperature", "nee"]].dropna()
+    night_data = alldata.where(alldata["ppfd"] < PPFD_THRESHOLD)[
+        ["temperature", "nee"]
+    ].dropna()
     temp_response, temp_response_err = respiration.find_temperature_response(night_data)
 
     resp_models = respiration.create_models(night_data, temp_response)
