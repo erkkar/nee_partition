@@ -100,17 +100,21 @@ def create_models(
 ) -> dict[datetime.date, lmfit.model.ModelResult | None]:
     """Fit models for total ecosystem response
 
+    Uses an increasing window to select data around each date.
+
     Args:
         data: Data frame with only night time values of NEE and temperature
         E: Estimate for respiration temperature sensitivity
     """
 
     def fit_date(date: datetime.date) -> lmfit.model.ModelResult | None:
-        df = get_window_data(data, date, 2)
-        # Check that there is enough data
-        if len(df) < MIN_DATA_LENGTH:
-            return None
-        return fit_respiration(df["nee"], df["temperature"], E=E)
+        for window_half_width in range(2, 8):
+            df = get_window_data(data, date, window_half_width)
+            # If there is enough data, fit the model
+            if len(df) >= MIN_DATA_LENGTH:
+                return fit_respiration(df["nee"], df["temperature"], E=E)
+        # Not enough data found within maximum window
+        return None
 
     model_dates = data.asfreq("D").index.date  # type: ignore
     return {d: fit_date(d) for d in model_dates}
