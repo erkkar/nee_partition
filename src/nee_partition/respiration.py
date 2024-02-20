@@ -22,6 +22,8 @@ E_GUESS = 300  # K-1
 MIN_DATA_LENGTH = 20
 MIN_TEMP_RANGE = 5  # K
 
+RELATIVE_ERROR_LIMIT = 0.5
+
 
 def ecosystem_respiration(temperature: float, E: float, R0: float) -> float:
     """Calculate soil respiration based on Lloyd & Taylor (1994)
@@ -43,7 +45,7 @@ def ecosystem_respiration(temperature: float, E: float, R0: float) -> float:
 
 def fit_respiration(
     respiration: pd.Series, temperature: pd.Series, E: float | None = None
-) -> lmfit.model.ModelResult:
+) -> lmfit.model.ModelResult | None:
     """Fit the respiration model to data"""
     model = lmfit.Model(
         ecosystem_respiration, independent_vars=["temperature"], missing="drop"
@@ -66,7 +68,17 @@ def fit_respiration(
     else:  # if value for E is given, make it constant in the fit
         params.add("E", value=E, vary=False)
 
-    return model.fit(respiration.values, params, temperature=temperature.values)
+    # Fit model and do checks
+    mdl = model.fit(respiration.values, params, temperature=temperature.values)
+    if any(  # any parameter relative error above limit
+        mdl.params[par].stderr / mdl.params[par].value > RELATIVE_ERROR_LIMIT
+        for par in mdl.params
+    ) or any(  # any parameter value is close to boundaries
+        np.isclose(mdl.params[par].value, VARIABLE_BOUNDS[par], rtol=0.01, atol=0).any()
+        for par in mdl.params
+    ):
+        return None
+    return mdl
 
 
 def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
@@ -86,7 +98,9 @@ def find_temperature_response(data: pd.DataFrame) -> tuple[float, float]:
             df["temperature"].max() - df["temperature"].min() < MIN_TEMP_RANGE
         ):
             return np.nan
-        return fit_respiration(df["nee"], df["temperature"]).params["E"].value
+        # Fit model and extract value for E
+        mdl = fit_respiration(df["nee"], df["temperature"])
+        return mdl.params["E"].value if mdl is not None else np.nan
 
     model_dates = data.asfreq("D").index.date  # type: ignore
     temp_response = pd.Series(
