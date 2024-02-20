@@ -16,7 +16,7 @@ VARIABLE_BOUNDS = {
 
 # Initial guesses for parameter values
 R0_GUESS = 0.2  # mg CO2 m-2 s-1
-E_GUESS = 300  # mg CO2 m-2 s-1 K-1
+E_GUESS = 300  # K-1
 
 # Other settings
 MIN_DATA_LENGTH = 20
@@ -63,7 +63,7 @@ def fit_respiration(
             min=VARIABLE_BOUNDS["E"][0],
             max=VARIABLE_BOUNDS["E"][1],
         )
-    else:  # If value for E is given, make it constant in the fit
+    else:  # if value for E is given, make it constant in the fit
         params.add("E", value=E, vary=False)
 
     return model.fit(respiration.values, params, temperature=temperature.values)
