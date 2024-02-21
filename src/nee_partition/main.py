@@ -19,8 +19,10 @@ def main():
     night_data = alldata.where(alldata["ppfd"] < PPFD_THRESHOLD)[
         ["temperature", "nee"]
     ].dropna()
-    temp_response, temp_response_err = respiration.find_temperature_response(night_data)
+    temp_sensitivity, temp_sensitivity_err = respiration.find_temperature_sensitivity(
+        night_data
+    )
 
-    resp_models = respiration.create_models(night_data, temp_response)
+    resp_models = respiration.create_models(night_data, temp_sensitivity)
 
     return resp_models
