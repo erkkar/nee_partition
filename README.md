@@ -21,20 +21,20 @@ Methodology
 
 Ecosystem respiration as a function of temperature is modelled 
 following Lloyd and Taylor (1994):
-$$
+```math
 R_\mathrm{eco}(T) 
-    = R_0 \exp\left(E\left(\frac{1}{T_0} - \frac{1}{T - T_1}\right)\right),
-$$
+    = R_0 \exp\left[E\left(\frac{1}{T_0} - \frac{1}{T - T_1}\right)\right],
+```
 where $R_0$ is the ecosystem respiration at the reference temperature (10°C),
 $E$ is the temperature sensitivity of respiration and $T_0, T_1$ are 
 temperature constants.
 
 GPP is modelled using a hyperbolic light response curve (Lasslop et al., 2008):
-$$
+```math
 \mathit{GPP} 
     = \frac{\alpha \times \mathit{PPFD} \times \mathit{GP}_\mathrm{max}}
            {\alpha \times \mathit{PPFD} + \mathit{GP}_\mathrm{max}},
-$$
+```
 where $\alpha$ is the canopy light utilization efficiency 
 and $\mathit{GP}_\mathrm{max}$ the asymptotic gross photosynthesis rate.
 
