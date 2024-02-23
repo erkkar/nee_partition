@@ -28,4 +28,16 @@ def main(data_file_path: Path | str):
 
     resp_models = respiration.create_models(night_data, temp_sensitivity)
 
-    return resp_models
+    # Get R10 values for each date and interpolate missing values
+    R10_date = pd.Series(
+        {
+            pd.to_datetime(date): (
+                resp_models[date].params["R10"].value  # type: ignore
+                if resp_models[date] is not None
+                else float("nan")
+            )
+            for date, mdl in resp_models.items()
+        }
+    ).interpolate(method="time", limit_direction="both")
+
+    return R10_date
