@@ -37,7 +37,8 @@ def main(data_file_path: Path | str):
                 else float("nan")
             )
             for date, mdl in resp_models.items()
-        }
+        },
+        name="R10",
     ).interpolate(method="time", limit_direction="both")
 
     return R10_date
