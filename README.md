@@ -14,7 +14,7 @@ To install the package from GitHub
 Basic usage
 
     >>> from nee_partition.main import main
-    >>> main()
+    >>> main("<PATH TO A CSV DATA FILE>")
 
 Methodology
 -----------
